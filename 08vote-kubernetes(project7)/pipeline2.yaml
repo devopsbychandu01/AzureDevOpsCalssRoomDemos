@@ -1,0 +1,21 @@
+name: mypipeline
+trigger:
+  branches:
+    include:
+      - master
+      - develop
+      - qa
+      - uat
+variables:
+  goal: mvn package
+pool:
+  name: cloudcomputing
+stages:
+  - stage: buildstage
+    jobs:
+      - job: buildJob
+        steps:
+          - task: Maven@4
+            inputs:
+              goals: $(goal)
+          - task: CopyFiles@1

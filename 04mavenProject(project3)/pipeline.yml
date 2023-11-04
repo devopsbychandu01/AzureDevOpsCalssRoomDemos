@@ -1,0 +1,34 @@
+
+trigger:
+  branches:
+    exclude:
+      - feature*
+    include:
+      - master
+      - dev
+      - uat
+      - testing
+      - qa
+pool:
+  name: linuxagent
+
+steps:
+  - script: mvn compile
+    displayName: compile maven code
+  - script: mvn test
+    displayName: display the test results
+  - script: mvn package
+    displayName: packaging the code
+  - task: CopyFiles@2
+    displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+    inputs:
+      SourceFolder: '$(system.defaultworkingdirectory)'
+      Contents: '**/*.zip'
+      TargetFolder: '$(build.artifactstagingdirectory)'
+    condition: succeededOrFailed()
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    inputs:
+      PathtoPublish: '$(build.artifactstagingdirectory)'
+      ArtifactName: '**/*.zip'
+    condition: succeededOrFailed()

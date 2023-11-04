@@ -1,0 +1,68 @@
+name: mypipeline
+trigger:
+  - master
+pool:
+  name: cloudcomputing
+variables:
+  acrName: devopsbychandu.azurecr.io
+  imageName: devopsbychandu
+  tag: v1
+stages:
+  - stage: dockerImageBuildAndPush
+    jobs:
+      - job: dockerImageBuildAndPush
+        steps:
+          - task: Docker@2
+            inputs:
+              command: 'build'
+              Dockerfile: '**/Dockerfile'
+              arguments: '-t $(acrName)/$(imageName):$(tag)'
+          - script: docker login $(acrName) -u devopsbychandu -p TvCNmGjEjlXG5vHUKAd11uiO/jXnuamLHaIVD1TkBF+ACRBHT14j
+            displayName: dockerLogin
+          - script: docker push $(acrName)/$(imageName):$(tag)
+            displayName: imagepush
+  - stage: downloadArtifacts
+    dependsOn: dockerImageBuildAndPush
+    jobs:
+      - job: downloadArtifacts
+        steps:
+          - task: CopyFiles@2
+            displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+            inputs:
+              SourceFolder: '$(system.defaultworkingdirectory)'
+              Contents: '*.yml'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+            condition: succeededOrFailed()
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: '$(system.defaultworkingdirectory)'
+              Contents: 'config'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact: drop'
+            inputs:
+              PathtoPublish: '$(build.artifactstagingdirectory)'
+            condition: succeededOrFailed()
+  - stage: deploycode
+    dependsOn: downloadArtifacts
+    jobs:
+      - job: deploycode
+        steps:
+          - script: export KUBECONFIG=$(build.artifactstagingdirectory)/config
+            displayName: login to cluster
+          - task: KubernetesManifest@1
+            inputs:
+              action: 'deploy'
+              connectionType: 'azureResourceManager'
+              azureSubscriptionConnection: 'myserviceconnection'
+              azureResourceGroup: 'dev'
+              kubernetesCluster: 'devaks'
+              manifests: '$(system.defaultworkingdirectory)/deployments.yml'
+          - task: KubernetesManifest@1
+            inputs:
+              action: 'deploy'
+              connectionType: 'azureResourceManager'
+              azureSubscriptionConnection: 'myserviceconnection'
+              azureResourceGroup: 'dev'
+              kubernetesCluster: 'devaks'
+              manifests: '$(system.defaultworkingdirectory)/services.yml'

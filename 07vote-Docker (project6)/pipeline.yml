@@ -1,0 +1,25 @@
+name: mypipeline
+trigger:
+  - master
+pool:
+  name: cloudcomputing
+# variables:
+#   acrName: devospbychandu.azurecr.io
+#   imageName: devopsychandu
+#   tag: v1
+stages:
+  - stage: dockerImageBuild
+    jobs:
+      - job: dockerImageBuild
+        steps:
+          - task: Docker@2
+            inputs:
+              command: 'build'
+              Dockerfile: '**/Dockerfile'
+              arguments: '-t app:v1'
+  - stage: startContainer
+    dependsOn: dockerImageBuild
+    jobs:
+      - job: startContainer
+        steps:
+          - script: docker run -itd -p 1234:80 app:v1

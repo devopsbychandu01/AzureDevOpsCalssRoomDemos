@@ -1,0 +1,7 @@
+docker build -t app:v1 .
+
+docker run -itd -p 80:80 app:v1
+
+
+# Attach using acr-name
+az aks update -n devcluster -g devops --attach-acr devospbychandu
